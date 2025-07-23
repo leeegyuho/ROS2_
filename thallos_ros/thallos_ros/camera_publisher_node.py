@@ -12,7 +12,7 @@ class CameraPublisherNode(Node):
         self.bridge = CvBridge()
 
         # VIDEO_SOURCE는 실제 파일 경로로 변경해주세요
-        self.video_source = '/home/hkit/Downloads/Driving Downtown Seoul.mp4' # 실제 경로로 수정
+        self.video_source = '/home/hkit/Downloads/rural_cut.webm' # 실제 경로로 수정
         self.cap = cv2.VideoCapture(self.video_source)
 
         if not self.cap.isOpened():

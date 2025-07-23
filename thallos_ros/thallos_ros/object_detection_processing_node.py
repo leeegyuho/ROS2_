@@ -54,7 +54,7 @@ class ObjectDetectionProcessingNode(Node):
             self.yolo_model = None
 
         self.processed_data_publisher_ = self.create_publisher(ProcessingData, '/processing/data_output', 10)
-        self.visualized_image_publisher_ = self.create_publisher(Image, '/processing/visualized_image', 10)
+        #self.visualized_image_publisher_ = self.create_publisher(Image, '/processing/visualized_image', 10)
 
         self.get_logger().info('Object Detection Processing Node가 시작되었습니다.')
 
@@ -182,7 +182,7 @@ class ObjectDetectionProcessingNode(Node):
             mask_warning = cv2.subtract(mask_warning, mask_danger)
 
         if danger_roi is not None:
-            cv2.polylines(debug_image, danger_roi, isClosed=True, color=(0, 0, 255), thickness=3)
+            cv2.polylines(debug_image, danger_roi, isClosed=True, color=(0, 0, 255), thickness=2)
         if warning_roi is not None:
             warning_mask_for_viz = np.zeros((h, w), dtype=np.uint8)
             cv2.fillPoly(warning_mask_for_viz, [warning_roi], 255)
@@ -192,7 +192,7 @@ class ObjectDetectionProcessingNode(Node):
             warning_mask_for_viz = cv2.subtract(warning_mask_for_viz, danger_mask_for_viz)
 
             contours, _ = cv2.findContours(warning_mask_for_viz, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            cv2.polylines(debug_image, contours, isClosed=True, color=(0, 255, 255), thickness=3)
+            cv2.polylines(debug_image, contours, isClosed=True, color=(0, 255, 255), thickness=2)
 
         detected_objects_for_msg = []
         current_alert_level = "NONE"
@@ -229,14 +229,17 @@ class ObjectDetectionProcessingNode(Node):
                             if distance < WARNING_DISTANCE_THRESHOLD and current_alert_level != "DANGER":
                                 current_alert_level = "WARNING"
 
-                        display_color_bgr = (0, 0, 255) if in_danger else \
-                                            (0, 255, 255) if in_warning else \
-                                            (0, 255, 0)
+                        # === 이 부분이 핵심 수정 지점입니다. ===
+                        # 객체가 danger_roi 또는 warning_roi 내에 있을 경우에만 메시지에 추가
+                        if in_danger or in_warning: # 또는 원하는 조건으로 변경 (예: if in_danger:)
+                            display_color_bgr = (0, 0, 255) if in_danger else \
+                                                (0, 255, 255) if in_warning else \
+                                                (0, 0, 0) # 이 부분은 이제 필요 없을 수도 있습니다 (else로 들어오지 않으므로)
 
-                        cv2.rectangle(debug_image, (x1, y1), (x2, y2), display_color_bgr, 2)
-                        label_text = f"{label} {distance:.2f}m"
-                        cv2.putText(debug_image, label_text, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, display_color_bgr, 2)
-                        cv2.circle(debug_image, (obj_center_x, obj_center_y), 5, display_color_bgr, -1)
+                            cv2.rectangle(debug_image, (x1, y1), (x2, y2), display_color_bgr, 2)
+                            label_text = f"{label} {distance:.2f}m"
+                            cv2.putText(debug_image, label_text, (x1, y1 - 10), cv2.FONT_HERSHEY_PLAIN, 1, display_color_bgr, 1)
+                            cv2.circle(debug_image, (obj_center_x, obj_center_y), 5, display_color_bgr, -1)
 
                         detected_obj_msg = DetectedObject()
                         detected_obj_msg.label = label
@@ -275,8 +278,8 @@ class ObjectDetectionProcessingNode(Node):
         visualized_ros_image = self.bridge.cv2_to_imgmsg(debug_image, "bgr8")
         self.visualized_image_publisher_.publish(visualized_ros_image)
 
-        #cv2.imshow("Processing Node Output", debug_image)
-        #cv2.waitKey(1)
+        cv2.imshow("Processing Node Output", debug_image)
+        cv2.waitKey(1)
 
 def main(args=None):
     rclpy.init(args=args)
